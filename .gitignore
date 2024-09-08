@@ -17,3 +17,5 @@ erl_crash.dump
 .DS_Store
 *.swp
 .elixir_ls/
+.idea/
+*.iml
