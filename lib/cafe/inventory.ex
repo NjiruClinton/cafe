@@ -72,4 +72,39 @@ defmodule Cafe.Inventory do
       Decimal.compare(recipe_item.ingredient.on_hand, needed) in [:gt, :eq]
     end)
   end
+
+  def consume_menu_items(repo, items) when is_list(items) do
+    Enum.reduce_while(items, {:ok, []}, fn item, {:ok, consumed} ->
+      case consume_menu_item(repo, item.menu_item.id, item.quantity) do
+        {:ok, changes} -> {:cont, {:ok, changes ++ consumed}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp consume_menu_item(repo, menu_item_id, quantity) do
+    recipe_items =
+      RecipeItem
+      |> where([recipe_item], recipe_item.menu_item_id == ^menu_item_id)
+      |> join(:inner, [recipe_item], ingredient in assoc(recipe_item, :ingredient))
+      |> lock("FOR UPDATE")
+      |> preload([_recipe_item, ingredient], ingredient: ingredient)
+      |> repo.all()
+
+    Enum.reduce_while(recipe_items, {:ok, []}, fn recipe_item, {:ok, consumed} ->
+      required = Decimal.mult(recipe_item.quantity, Decimal.new(quantity))
+      ingredient = recipe_item.ingredient
+
+      if Decimal.compare(ingredient.on_hand, required) == :lt do
+        {:halt, {:error, {:out_of_stock, ingredient.name}}}
+      else
+        new_on_hand = Decimal.sub(ingredient.on_hand, required)
+
+        case ingredient |> Ingredient.changeset(%{on_hand: new_on_hand}) |> repo.update() do
+          {:ok, updated} -> {:cont, {:ok, [{updated, required} | consumed]}}
+          {:error, changeset} -> {:halt, {:error, changeset}}
+        end
+      end
+    end)
+  end
 end
