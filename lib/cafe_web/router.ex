@@ -18,6 +18,8 @@ defmodule CafeWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    live "/ops", OpsDashboardLive
+    live "/orders", OrderLive
   end
 
   if Application.compile_env(:cafe, :dev_routes) do
