@@ -112,7 +112,7 @@ defmodule Cafe.Orders do
     normalized =
       Enum.map(line_attrs, fn attrs ->
         attrs = Map.new(attrs)
-        menu_item_id = Map.get(attrs, :menu_item_id) || Map.get(attrs, "menu_item_id")
+        menu_item_id = attrs |> Map.get(:menu_item_id, Map.get(attrs, "menu_item_id")) |> parse_id()
         quantity = attrs |> Map.get(:quantity, Map.get(attrs, "quantity", 1)) |> parse_quantity()
 
         %{
@@ -158,6 +158,17 @@ defmodule Cafe.Orders do
   end
 
   defp parse_quantity(_quantity), do: :invalid
+
+  defp parse_id(id) when is_integer(id), do: id
+
+  defp parse_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {id, ""} -> id
+      _ -> :invalid
+    end
+  end
+
+  defp parse_id(_id), do: :invalid
 
   defp insert_lines(repo, order, items) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)

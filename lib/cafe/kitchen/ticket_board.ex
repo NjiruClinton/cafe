@@ -10,16 +10,21 @@ defmodule Cafe.Kitchen.TicketBoard do
 
   alias Cafe.Orders.Order
 
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+  def start_link(opts) do
+    name = Keyword.get(opts, :name, __MODULE__)
+    GenServer.start_link(__MODULE__, %{}, name: name)
   end
 
-  def tickets do
-    GenServer.call(__MODULE__, :tickets)
+  def tickets(server \\ __MODULE__) do
+    GenServer.call(server, :tickets)
   end
 
   def acknowledge(order_id) do
-    GenServer.cast(__MODULE__, {:acknowledge, order_id})
+    acknowledge(__MODULE__, order_id)
+  end
+
+  def acknowledge(server, order_id) do
+    GenServer.cast(server, {:acknowledge, order_id})
   end
 
   @impl true
